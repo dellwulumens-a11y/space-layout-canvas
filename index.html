@@ -860,11 +860,11 @@
     <span class="ci-label">OIP Bridge</span>
   </div>
 
-  <!-- DC Camera：子選單 DC Camera-1/-2/-3 -->
+  <!-- Document Camera：子選單 DC / PS / CL Camera -->
   <div class="component-item has-variants" draggable="true" data-type="doccam" data-variant="1">
     <span class="vp-more">▶</span>
-    <img class="item-thumb" src="" data-thumb="doccam" alt="DC Camera">
-    <span class="ci-label">DC Camera</span>
+    <img class="item-thumb" src="" data-thumb="doccam" alt="Document Camera">
+    <span class="ci-label">Document Camera</span>
   </div>
 
   <div class="component-item" draggable="true" data-type="lcproc">
@@ -885,7 +885,7 @@
 
   <div class="component-item" draggable="true" data-type="netswitch">
     <svg class="item-svg" data-icon="netswitch" width="48" height="24"></svg>
-    <span class="ci-label">Manage Switch</span>
+    <span class="ci-label">Managed Switch</span>
   </div>
 
   <!-- Mic：子選單 Ceiling / Table / Gooseneck -->
@@ -1388,9 +1388,9 @@ const I18N = {
     solution:'方案設備', env:'環境設施', tables:'桌子', chairs:'椅子',
     // 元件名稱
     comp_camera:'VC Camera', comp_mic:'Mic', comp_monitor:'螢幕',
-    comp_aibox:'CamConnect', comp_oip:'OIP Bridge', comp_doccam:'DC Camera',
+    comp_aibox:'CamConnect', comp_oip:'OIP Bridge', comp_doccam:'Document Camera',
     comp_lcproc:'LC Media Processor', comp_camctrl:'Camera Controller',
-    comp_ctrlsys:'Control System', comp_netswitch:'Manage Switch',
+    comp_ctrlsys:'Control System', comp_netswitch:'Managed Switch',
     comp_table:'長型桌', comp_table_square:'方型桌', comp_table_u1:'U型桌-1', comp_table_u2:'U型桌-2',
     comp_image:'圖片', comp_chair:'椅子', comp_chair_p:'有人椅', comp_chair_grid:'矩陣式座位', comp_chair_tiered:'階梯式座位',
     comp_wall:'牆壁', comp_room:'房間', comp_door:'門',
@@ -1437,9 +1437,9 @@ const I18N = {
     draw:'Draw', line:'Line', polyline:'Polyline', rect:'Rect', ellipse:'Ellipse', textTool:'Text',
     solution:'Equipment', env:'Furniture', tables:'Tables', chairs:'Chairs',
     comp_camera:'VC Camera', comp_mic:'Mic', comp_monitor:'Monitor',
-    comp_aibox:'CamConnect', comp_oip:'OIP Bridge', comp_doccam:'DC Camera',
+    comp_aibox:'CamConnect', comp_oip:'OIP Bridge', comp_doccam:'Document Camera',
     comp_lcproc:'LC Media Processor', comp_camctrl:'Camera Controller',
-    comp_ctrlsys:'Control System', comp_netswitch:'Manage Switch',
+    comp_ctrlsys:'Control System', comp_netswitch:'Managed Switch',
     comp_table:'Rect Table', comp_table_square:'Sq. Table', comp_table_u1:'U-Table 1', comp_table_u2:'U-Table 2',
     comp_image:'Image', comp_chair:'Chair', comp_chair_p:'Occupied', comp_chair_grid:'Matrix Seating', comp_chair_tiered:'Tiered Seating',
     comp_wall:'Wall', comp_room:'Room', comp_door:'Door',
@@ -1615,13 +1615,13 @@ const componentDefs = {
   camera: {
     label: 'VC Camera',
     w: 80, h: 60,
-    // 內容由 applyVariant() 依選定機型 (VC Camera-1/2/3) 寫入
+    // 內容由 applyVariant() 依選定機型 (VC Camera A/B, Box Camera) 寫入
     svg: ``,
   },
   doccam: {
-    label: 'DC Camera',
+    label: 'Document Camera',
     w: 80, h: 60,
-    // 內容由 applyVariant() 依選定機型 (DC Camera-1/2/3) 寫入
+    // 內容由 applyVariant() 依選定機型 (DC / PS / CL Camera) 寫入
     svg: ``,
   },
   oip: {
@@ -1670,7 +1670,7 @@ const componentDefs = {
           <rect x="106" y="30" width="4" height="8" rx="1" fill="#4a525d"/>`,
   },
   netswitch: {
-    label: 'Manage Switch',
+    label: 'Managed Switch',
     w: 120, h: 60,
     svg: `<!-- 網管型交換器上視圖: 8 埠 RJ45 + 2 埠 SFP + Console -->
           <rect x="1" y="1" width="118" height="58" rx="5" fill="#2a3742" stroke="#55697a" stroke-width="2"/>
@@ -2069,9 +2069,9 @@ const OIP_CTRL_SVG = componentDefs.encoder.svg
 // fov: true → 該機型具備攝影機視角扇形與 FOV 屬性面板
 const DEVICE_VARIANTS = {
   camera: [
-    { id: 1, name: 'VC Camera-1', w: 80,  h: 60, img: DEV_IMG.vc1, fov: true },
-    { id: 2, name: 'VC Camera-2', w: 80,  h: 64, img: DEV_IMG.vc2, fov: true },
-    { id: 3, name: 'VC Camera-3', w: 80,  h: 60, img: DEV_IMG.vc3, fov: true },
+    { id: 1, name: 'VC Camera A', w: 80,  h: 60, img: DEV_IMG.vc1, fov: true },
+    { id: 2, name: 'VC Camera B', w: 80,  h: 64, img: DEV_IMG.vc2, fov: true },
+    { id: 3, name: 'Box Camera',  w: 80,  h: 60, img: DEV_IMG.vc3, fov: true },
   ],
   aibox: [
     { id: 1, name: 'AI-Box', w: 110, h: 80, svg: componentDefs.aibox.svg },
@@ -2088,9 +2088,9 @@ const DEVICE_VARIANTS = {
     { id: 3, name: 'OIP Controller', w: 110, h: 78, svg: OIP_CTRL_SVG },
   ],
   doccam: [
-    { id: 1, name: 'DC Camera-1', w: 80, h: 60, img: DEV_IMG.dc1 },
-    { id: 2, name: 'DC Camera-2', w: 80, h: 60, img: DEV_IMG.dc2 },
-    { id: 3, name: 'DC Camera-3', w: 80, h: 60, img: DEV_IMG.dc3 },
+    { id: 1, name: 'DC Camera', w: 80, h: 60, img: DEV_IMG.dc1 },
+    { id: 2, name: 'PS Camera', w: 80, h: 60, img: DEV_IMG.dc2 },
+    { id: 3, name: 'CL Camera', w: 80, h: 60, img: DEV_IMG.dc3 },
   ],
 };
 
