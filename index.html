@@ -373,6 +373,22 @@
     z-index: 50;
   }
 
+  /* ── 設備連接點（畫線時顯示於設備四周）── */
+  #anchor-layer { position: absolute; inset: 0; pointer-events: none; z-index: 400; }
+  .anchor-dot {
+    position: absolute;
+    width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: #7ec8ff; border: 1.5px solid #1a5fa0;
+    box-shadow: 0 0 0 2px rgba(126,200,255,0.28);
+    transition: transform 0.08s;
+  }
+  .anchor-dot.near {
+    background: #ffd24a; border-color: #b57a00;
+    box-shadow: 0 0 0 4px rgba(255,210,74,0.35);
+    transform: scale(1.5);
+  }
+
   /* ── 攝像機 FOV 視角 ── */
   .fov-svg { position: absolute; left:0; top:0; overflow:visible; pointer-events:none; }
   /* 保證攝像機 SVG 在 FOV 扇形上方 */
@@ -497,6 +513,13 @@
   .shape-handle.w  { cursor: w-resize; }
   .shape-handle.e  { cursor: e-resize; }
   .shape-handle.p1,.shape-handle.p2 { cursor: crosshair; }
+  /* 轉角連線的折點調整把手 */
+  .shape-handle.elbow-mid {
+    border-radius: 2px; background: #ffd24a; border-color: #b57a00;
+    width: 11px; height: 11px;
+  }
+  .shape-handle.elbow-mid.h-move { cursor: ew-resize; }
+  .shape-handle.elbow-mid.v-move { cursor: ns-resize; }
 
   /* Shape delete button */
   .shape-del {
@@ -777,6 +800,9 @@
       <div id="cable-presets"></div>
       <button class="draw-btn" data-tool="line" onclick="setDrawTool('line')">
         <svg width="18" height="18" viewBox="0 0 18 18"><line x1="2" y1="16" x2="16" y2="2" stroke="#aac" stroke-width="2" stroke-linecap="round"/></svg><span data-i18n="line">直線</span>
+      </button>
+      <button class="draw-btn" data-tool="elbow" onclick="setDrawTool('elbow')">
+        <svg width="18" height="18" viewBox="0 0 18 18"><polyline points="2,4 9,4 9,14 16,14" fill="none" stroke="#aac" stroke-width="2" stroke-linecap="round" stroke-linejoin="miter"/></svg><span data-i18n="elbow">轉角連線</span>
       </button>
       <button class="draw-btn" data-tool="polyline" onclick="setDrawTool('polyline')">
         <svg width="18" height="18" viewBox="0 0 18 18"><polyline points="2,16 7,6 12,12 16,3" fill="none" stroke="#aac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="polyline">折線</span>
@@ -1214,7 +1240,7 @@
   <canvas id="ruler-h"></canvas>
   <canvas id="ruler-v"></canvas>
   <div id="grid-bg"></div>
-  <div id="canvas"><div id="canvas-bg" style="position:absolute;inset:0;pointer-events:none;z-index:0;background-size:contain;background-repeat:no-repeat;background-position:top left;display:none;"></div></div>
+  <div id="canvas"><div id="canvas-bg" style="position:absolute;inset:0;pointer-events:none;z-index:0;background-size:contain;background-repeat:no-repeat;background-position:top left;display:none;"></div><div id="anchor-layer"></div></div>
   <div id="canvas-title">未命名</div>
   <div id="hint"></div>
   <div id="ctx-menu">
@@ -1373,7 +1399,7 @@
 </div>
 
 <script>
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 
 // ── i18n ──────────────────────────────────────────────────────────────────────
 const I18N = {
@@ -1383,7 +1409,7 @@ const I18N = {
     newFile:'🗋 新檔', save:'💾 存檔', saveAs:'💾 另存新檔', load:'📂 載入',
     exportSVG:'🖼 匯出 SVG', exportPDF:'🖨 匯出 PDF',
     // 繪圖面板
-    draw:'繪圖', line:'直線', polyline:'折線', rect:'方框', ellipse:'圓框', textTool:'文字',
+    draw:'繪圖', line:'直線', elbow:'轉角連線', polyline:'折線', rect:'方框', ellipse:'圓框', textTool:'文字',
     // 群組
     solution:'方案設備', env:'環境設施', tables:'桌子', chairs:'椅子',
     // 元件名稱
@@ -1423,7 +1449,7 @@ const I18N = {
     browse:'📂 選擇', restoreDir:'🔓 點此恢復上次目錄存取權限', version:'版本',
     needsPermission:'（需恢復授權）',
     // JS 動態訊息
-    confirmClear:'確定要清除所有元件嗎？', confirmNew:'清除目前內容並開新檔？', ok:'確定', cancel:'取消',
+    confirmClear:'確定要清除所有元件嗎？', confirmNew:'清除目前內容並開新檔？', ok:'確定', cancel:'取消', copied:'已複製 ',
     noDirPicker:'此瀏覽器不支援目錄選擇', noItems:'畫布上沒有元件',
     loadFailed:'載入失敗：', dirFailed:'選擇目錄失敗：',
     dirRestored:'存檔目錄已恢復', permDenied:'授權未通過，請重新選擇目錄',
@@ -1434,7 +1460,7 @@ const I18N = {
     file:'File', fileManager:'File Manager', untitled:'Untitled', filenamePh:'Filename',
     newFile:'🗋 New', save:'💾 Save', saveAs:'💾 Save As', load:'📂 Load',
     exportSVG:'🖼 Export SVG', exportPDF:'🖨 Export PDF',
-    draw:'Draw', line:'Line', polyline:'Polyline', rect:'Rect', ellipse:'Ellipse', textTool:'Text',
+    draw:'Draw', line:'Line', elbow:'Elbow', polyline:'Polyline', rect:'Rect', ellipse:'Ellipse', textTool:'Text',
     solution:'Equipment', env:'Furniture', tables:'Tables', chairs:'Chairs',
     comp_camera:'VC Camera', comp_mic:'Mic', comp_monitor:'Monitor',
     comp_aibox:'CamConnect', comp_oip:'OIP Bridge', comp_doccam:'Document Camera',
@@ -1467,7 +1493,7 @@ const I18N = {
     settings:'Settings', defaultDir:'Default Save Dir', notSet:'Not set',
     browse:'📂 Browse', restoreDir:'🔓 Click to restore directory access', version:'Version',
     needsPermission:' (needs permission)',
-    confirmClear:'Clear all items?', confirmNew:'Discard changes and open new file?', ok:'OK', cancel:'Cancel',
+    confirmClear:'Clear all items?', confirmNew:'Discard changes and open new file?', ok:'OK', cancel:'Cancel', copied:'Copied ',
     noDirPicker:'Directory picker not supported', noItems:'No items on canvas',
     loadFailed:'Load failed: ', dirFailed:'Directory select failed: ',
     dirRestored:'Save directory restored', permDenied:'Permission denied, please re-select directory',
@@ -1577,6 +1603,8 @@ function performRedo() {
 let selectedShape = null;
 let drawTool  = null;
 let fovHidden = false;          // 是否整體隱藏攝像機視角扇形
+let uidSeq    = 0;              // 設備唯一識別碼流水號
+const nextUid = () => 'u' + (++uidSeq);
 let scale = 1;
 let panX = 0, panY = 0;
 let bgImage = null, bgOpacity = 0.4;
@@ -2614,6 +2642,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
   el.style.transformOrigin = `${svgW/2}px ${svgH/2}px`;
   el.dataset.rotation = rotation;
   el.dataset.type = type;
+  el.dataset.uid  = nextUid();      // 供線條連接用的唯一識別碼
 
   const HANDLES = `
       <div class="resize-handle nw" data-dir="nw"></div>
@@ -2714,6 +2743,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
       const newRot = startRot + (ev.clientY - startY) * 1.5;
       el.dataset.rotation = newRot;
       el.style.transform = `rotate(${newRot}deg)`;
+      updateAttachedShapes();
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
@@ -2786,6 +2816,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
         el.style.left = (ncx - nw/2) + 'px';
         el.style.top  = (ncy - nh/2) + 'px';
         if (el.classList.contains('has-fov'))      updateFOV(el);
+        updateAttachedShapes();
         if (el.dataset.type === 'room')            updateRoomFloor(el);
         if (el.dataset.type.startsWith('table_')) updateTableShape(el);
         drawRulers();
@@ -2859,6 +2890,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
         item.style.top  = (t0 + dy) + 'px';
         if (item.dataset.type === 'room') updateRoomFloor(item);
       });
+      updateAttachedShapes();      // 已連接的線條跟著設備移動
       drawRulers();
     };
     const onUp = () => {
@@ -2948,6 +2980,7 @@ function resizePlacedItem(el, nw, nh) {
   if (el.classList.contains('has-fov'))        updateFOV(el);
   if (el.dataset.type === 'room')              updateRoomFloor(el);
   if (el.dataset.type.startsWith('table_'))   updateTableShape(el);
+  updateAttachedShapes();
   drawRulers();
 }
 
@@ -2982,6 +3015,117 @@ function selectItem(el, addToSet = false) {
   drawRulers();
 }
 
+// ── 設備連接點（畫線時自動吸附設備四周的起始點）─────────────────────────────
+const ANCHOR_SNAP_PX = 15;          // 螢幕像素；換算成畫布單位時會除以 scale
+
+// 取得單一設備四周的連接點（上/右/下/左中點，已考慮旋轉）
+function itemAnchors(el) {
+  const rEl = el.querySelector('.item-svg');
+  if (!rEl || !el.dataset.uid) return [];
+  const { w, h } = getElemSize(rEl);
+  const L = parseFloat(el.style.left) || 0, T = parseFloat(el.style.top) || 0;
+  const cx = L + w / 2, cy = T + h / 2;
+  const r  = (parseFloat(el.dataset.rotation) || 0) * Math.PI / 180;
+  const cos = Math.cos(r), sin = Math.sin(r);
+  return [['n', 0, -h/2], ['e', w/2, 0], ['s', 0, h/2], ['w', -w/2, 0]]
+    .map(([id, dx, dy]) => ({
+      id, uid: el.dataset.uid,
+      x: cx + dx * cos - dy * sin,
+      y: cy + dx * sin + dy * cos,
+    }));
+}
+
+function allAnchors() {
+  const out = [];
+  canvas.querySelectorAll('.placed-item').forEach(el => {
+    if (el.dataset.isBg === '1') return;      // 背景底圖不列入
+    out.push(...itemAnchors(el));
+  });
+  return out;
+}
+
+function anchorPos(ref) {
+  if (!ref) return null;
+  const i = ref.indexOf(':');
+  if (i < 0) return null;
+  const host = canvas.querySelector(`.placed-item[data-uid="${ref.slice(0, i)}"]`);
+  if (!host) return null;
+  const a = itemAnchors(host).find(p => p.id === ref.slice(i + 1));
+  return a ? { x: a.x, y: a.y } : null;
+}
+
+// 吸附到最近的連接點；超出範圍則回傳原座標、ref 為空
+function snapPoint(x, y) {
+  const lim = ANCHOR_SNAP_PX / scale;
+  let best = null, bestD = lim;
+  allAnchors().forEach(a => {
+    const d = Math.hypot(a.x - x, a.y - y);
+    if (d < bestD) { bestD = d; best = a; }
+  });
+  highlightAnchor(best);
+  return best ? { x: best.x, y: best.y, ref: best.uid + ':' + best.id }
+              : { x, y, ref: '' };
+}
+
+// 連接點顯示
+function showAnchors(on) {
+  const layer = document.getElementById('anchor-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  if (!on) return;
+  allAnchors().forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'anchor-dot';
+    d.style.left = a.x + 'px';
+    d.style.top  = a.y + 'px';
+    d.dataset.ref = a.uid + ':' + a.id;
+    layer.appendChild(d);
+  });
+}
+function highlightAnchor(a) {
+  const layer = document.getElementById('anchor-layer');
+  if (!layer) return;
+  const ref = a ? a.uid + ':' + a.id : '';
+  layer.querySelectorAll('.anchor-dot').forEach(d =>
+    d.classList.toggle('near', !!ref && d.dataset.ref === ref));
+}
+
+// 設備移動/縮放/旋轉後，讓已連接的線條跟著走
+function updateAttachedShapes() {
+  canvas.querySelectorAll('.shape-item[data-stype="line"], .shape-item[data-stype="elbow"]').forEach(el => {
+    let changed = false;
+    [1, 2].forEach(n => {
+      const ref = el.dataset['a' + n];
+      if (!ref) return;
+      const p = anchorPos(ref);
+      if (p) { el.dataset['x' + n] = p.x; el.dataset['y' + n] = p.y; changed = true; }
+      else   { delete el.dataset['a' + n]; changed = true; }   // 來源設備已刪除 → 解除連接
+    });
+    if (changed) refreshShape(el);
+  });
+  canvas.querySelectorAll('.shape-item[data-stype="polyline"]').forEach(el => {
+    const pts = parsePoly(el);
+    if (pts.length < 2) return;
+    let changed = false;
+    [['a1', 0], ['a2', pts.length - 1]].forEach(([key, idx]) => {
+      const ref = el.dataset[key];
+      if (!ref) return;
+      const p = anchorPos(ref);
+      if (p) { pts[idx] = p; changed = true; }
+      else   { delete el.dataset[key]; }
+    });
+    if (changed) {
+      el.dataset.points = pts.map(p => `${p.x},${p.y}`).join('|');
+      updatePolylineGeometry(el);
+    }
+  });
+}
+
+// 設定 / 解除線條端點的連接
+function setShapeRef(el, key, ref) {
+  if (ref) el.dataset[key] = ref; else delete el.dataset[key];
+}
+
 // ── CAPTURE phase: intercept mousedown before placed-items receive it (drawing) ──
 wrapper.addEventListener('mousedown', e => {
   if (!drawTool) return;
@@ -3005,8 +3149,13 @@ wrapper.addEventListener('mousedown', e => {
   }
 
   pushUndo();
-  if (drawTool === 'line') {
-    drawPreview = createLine(sx, sy, sx, sy, { arrowS: false, arrowE: true });
+  if (drawTool === 'line' || drawTool === 'elbow') {
+    const s = snapPoint(sx, sy);          // 起點自動吸附設備連接點
+    drawStart = { x: s.x, y: s.y };
+    drawPreview = drawTool === 'elbow'
+      ? createElbow(s.x, s.y, s.x, s.y, { arrowS: false, arrowE: true })
+      : createLine(s.x, s.y, s.x, s.y, { arrowS: false, arrowE: true });
+    setShapeRef(drawPreview, 'a1', s.ref);
   } else {
     drawPreview = createRect(drawTool, sx, sy, 1, 1);
   }
@@ -3015,9 +3164,11 @@ wrapper.addEventListener('mousedown', e => {
     if (!drawPreview) return;
     const cx = (ev.clientX - rect.left - panX) / scale;
     const cy = (ev.clientY - rect.top  - panY) / scale;
-    if (drawTool === 'line') {
-      drawPreview.dataset.x2 = cx; drawPreview.dataset.y2 = cy;
-      updateLineGeometry(drawPreview);
+    if (drawTool === 'line' || drawTool === 'elbow') {
+      const s = snapPoint(cx, cy);        // 終點自動吸附設備連接點
+      drawPreview.dataset.x2 = s.x; drawPreview.dataset.y2 = s.y;
+      setShapeRef(drawPreview, 'a2', s.ref);
+      refreshShape(drawPreview);
     } else {
       const nx = Math.min(drawStart.x, cx), ny = Math.min(drawStart.y, cy);
       const nw = Math.max(4, Math.abs(cx - drawStart.x));
@@ -3058,7 +3209,7 @@ document.addEventListener('mouseup', () => { isDraggingCanvas = false; });
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    if (polyPreview) { polyPreview.remove(); polyPreview=null; polyPoints=[]; }
+    if (polyPreview) { polyPreview.remove(); polyPreview=null; polyPoints=[]; polyRefs=[]; }
     if (drawTool) setDrawTool(null);
   }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
@@ -3086,6 +3237,21 @@ document.addEventListener('keydown', e => {
       duplicateItem(selectedItem);
     }
   }
+  if (e.key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)) {
+    if (copySelection()) e.preventDefault();
+  }
+  if (e.key.toLowerCase() === 'x' && (e.ctrlKey || e.metaKey)) {
+    if (copySelection()) {
+      e.preventDefault();
+      pushUndo();
+      selectedItems.forEach(item => item.remove());
+      if (selectedShape) { selectedShape.remove(); selectedShape = null; }
+      deselectAll(); hidePropPanel(); updateAttachedShapes(); drawRulers();
+    }
+  }
+  if (e.key.toLowerCase() === 'v' && (e.ctrlKey || e.metaKey)) {
+    if (pasteClipboard()) e.preventDefault();
+  }
   if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     if (e.shiftKey) performRedo(); else performUndo();
@@ -3106,9 +3272,66 @@ document.addEventListener('keydown', e => {
       item.style.top  = (parseFloat(item.style.top)  + dy) + 'px';
       if (item.dataset.type === 'room') updateRoomFloor(item);
     });
+    updateAttachedShapes();
     drawRulers();
   }
 });
+
+// ── 複製 / 貼上（Ctrl+C、Ctrl+X、Ctrl+V）──────────────────────────────────────
+let clipboard  = { items: [], shapes: [] };
+let pasteCount = 0;                       // 連續貼上時逐次錯開位置
+
+function copySelection() {
+  const items  = [...selectedItems].map(serializeItem);
+  const shapes = selectedShape ? [serializeShape(selectedShape)] : [];
+  if (!items.length && !shapes.length) return false;
+  clipboard  = { items, shapes };
+  pasteCount = 0;
+  showToast(t('copied') + (items.length + shapes.length));
+  return true;
+}
+
+function pasteClipboard() {
+  if (!clipboard.items.length && !clipboard.shapes.length) return false;
+  pushUndo();
+  pasteCount++;
+  const off = 20 * pasteCount;
+  // 舊 uid → 新 uid，讓複製過來的線條仍連到複製出來的設備
+  const uidMap = {};
+  const pasted = [];
+
+  clipboard.items.forEach(src => {
+    const data = Object.assign({}, src, { x: src.x + off, y: src.y + off, uid: nextUid() });
+    if (src.uid) uidMap[src.uid] = data.uid;
+    pasted.push(materializeItem(data));
+  });
+
+  const remap = ref => {
+    if (!ref) return '';
+    const i = ref.indexOf(':');
+    const old = ref.slice(0, i);
+    return uidMap[old] ? uidMap[old] + ref.slice(i) : '';   // 未一起複製 → 不連接
+  };
+  clipboard.shapes.forEach(src => {
+    const s = Object.assign({}, src);
+    if (s.stype === 'line') {
+      s.x1 += off; s.y1 += off; s.x2 += off; s.y2 += off;
+    } else if (s.stype === 'polyline') {
+      s.points = (s.points || '').split('|').filter(Boolean)
+        .map(p => { const [x, y] = p.split(','); return `${+x + off},${+y + off}`; }).join('|');
+    } else {
+      s.x += off; s.y += off;
+    }
+    s.a1 = remap(s.a1); s.a2 = remap(s.a2);
+    restoreShapes([s]);
+  });
+
+  updateAttachedShapes();
+  deselectAll();
+  pasted.forEach((el, i) => selectItem(el, i > 0));
+  drawRulers();
+  return true;
+}
 
 // ── 右鍵選單（圖層管理）────────────────────────────────────────────────────────
 const ctxMenu = document.getElementById('ctx-menu');
@@ -3374,12 +3597,14 @@ function uiConfirm(msg) {
 
 // 實際清空畫布（同步）。保留 #canvas-bg 底圖圖層，否則載入底圖功能會失效
 function clearCanvas() {
-  const bg = document.getElementById('canvas-bg');
+  const bg     = document.getElementById('canvas-bg');
+  const anchor = document.getElementById('anchor-layer');
   deselectAll();
   deselectShape();
   hidePropPanel();
   canvas.innerHTML = '';
-  if (bg) canvas.appendChild(bg);
+  if (bg)     canvas.appendChild(bg);
+  if (anchor) { anchor.innerHTML = ''; canvas.appendChild(anchor); }
   selectedItem = null;
   drawRulers();
 }
@@ -3453,11 +3678,8 @@ function setDrawColor(color) {
 // 把顏色套用到既有繪圖物件
 function applyShapeColor(el, color) {
   const st = el.dataset.stype;
-  if (st === 'line') {
-    el.dataset.color = color; updateLineGeometry(el);
-    const inp = document.getElementById('pp-line-color'); if (inp) inp.value = color;
-  } else if (st === 'polyline') {
-    el.dataset.color = color; updatePolylineGeometry(el);
+  if (st === 'line' || st === 'elbow' || st === 'polyline') {
+    el.dataset.color = color; refreshShape(el);
     const inp = document.getElementById('pp-line-color'); if (inp) inp.value = color;
   } else if (st === 'rect' || st === 'ellipse') {
     el.dataset.stroke = color; updateRectGeometry(el);
@@ -3481,6 +3703,8 @@ function initCablePresets() {
 
 function setDrawTool(tool) {
   drawTool = (drawTool === tool) ? null : tool;
+  // 線條 / 折線工具啟用時，顯示所有設備四周的連接點
+  showAnchors(drawTool === 'line' || drawTool === 'elbow' || drawTool === 'polyline');
   document.querySelectorAll('.draw-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tool === drawTool));
   wrapper.style.cursor = drawTool ? 'crosshair' : '';
@@ -3630,13 +3854,17 @@ function updatePolylineGeometry(el) {
       ev.stopPropagation();
       const mx0=ev.clientX, my0=ev.clientY;
       const ox=pt.x, oy=pt.y;
+      const isEnd = (i === 0) ? 'a1' : (i === pts.length - 1 ? 'a2' : null);
+      showAnchors(true);
       const onMove = e2 => {
         const allPts = parsePoly(el);
-        allPts[i] = { x: ox+(e2.clientX-mx0)/scale, y: oy+(e2.clientY-my0)/scale };
+        const s = snapPoint(ox+(e2.clientX-mx0)/scale, oy+(e2.clientY-my0)/scale);
+        allPts[i] = { x: s.x, y: s.y };
+        if (isEnd) setShapeRef(el, isEnd, s.ref);
         el.dataset.points = allPts.map(p=>`${p.x},${p.y}`).join('|');
         updatePolylineGeometry(el); drawRulers();
       };
-      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
+      const onUp=()=>{showAnchors(false);document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);};
       document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
     });
   });
@@ -3650,8 +3878,158 @@ function bindPolylineProps(el) {
   el.querySelector('.sp-arrowE').addEventListener('change', e=>{el.dataset.arrowE=e.target.checked?'1':'0';updatePolylineGeometry(el);});
 }
 
+// ── 轉角連線（直角走線，避免線材斜跨交叉）─────────────────────────────────────
+function anchorSideOf(ref) {
+  if (!ref) return null;
+  const i = ref.indexOf(':');
+  return i < 0 ? null : ref.slice(i + 1);
+}
+
+// 依兩端連接的設備方位決定走線方式
+//   h  = 橫→縱→橫   v = 縱→橫→縱   L1 / L2 = 單一轉角
+function elbowMode(el) {
+  const isH = s => s === 'e' || s === 'w';
+  const s1 = anchorSideOf(el.dataset.a1), s2 = anchorSideOf(el.dataset.a2);
+  if (s1 && s2) {
+    if (isH(s1) && isH(s2))   return 'h';
+    if (!isH(s1) && !isH(s2)) return 'v';
+    return isH(s1) ? 'L1' : 'L2';
+  }
+  if (s1) return isH(s1) ? 'h' : 'v';
+  if (s2) return isH(s2) ? 'h' : 'v';
+  const dx = Math.abs(+el.dataset.x2 - +el.dataset.x1);
+  const dy = Math.abs(+el.dataset.y2 - +el.dataset.y1);
+  return dx >= dy ? 'h' : 'v';
+}
+
+function elbowPoints(el) {
+  const x1 = +el.dataset.x1, y1 = +el.dataset.y1;
+  const x2 = +el.dataset.x2, y2 = +el.dataset.y2;
+  let f = parseFloat(el.dataset.mid);
+  if (!isFinite(f)) f = 0.5;
+  f = Math.min(1, Math.max(0, f));
+  switch (elbowMode(el)) {
+    case 'L1': return [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2}];
+    case 'L2': return [{x:x1,y:y1},{x:x1,y:y2},{x:x2,y:y2}];
+    case 'v': { const my = y1 + (y2 - y1) * f;
+                return [{x:x1,y:y1},{x:x1,y:my},{x:x2,y:my},{x:x2,y:y2}]; }
+    default:  { const mx = x1 + (x2 - x1) * f;
+                return [{x:x1,y:y1},{x:mx,y:y1},{x:mx,y:y2},{x:x2,y:y2}]; }
+  }
+}
+
+function createElbow(x1, y1, x2, y2, props = {}) {
+  const p = Object.assign({ color: drawColor, width: 2, dash: 'solid',
+                            arrowS: false, arrowE: true, mid: 0.5 }, props);
+  const el = document.createElement('div');
+  el.className = 'shape-item'; el.dataset.stype = 'elbow';
+  Object.assign(el.dataset, { x1, y1, x2, y2, mid: p.mid,
+    color: p.color, lwidth: p.width, dash: p.dash,
+    arrowS: p.arrowS ? '1' : '0', arrowE: p.arrowE ? '1' : '0' });
+
+  el.innerHTML = `
+    <svg class="shape-svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none;"></svg>
+    <div class="shape-handle p1" data-ep="1"></div>
+    <div class="shape-handle p2" data-ep="2"></div>
+    <div class="shape-handle elbow-mid" title="拖曳調整轉角位置"></div>
+    <div class="shape-del" title="刪除">✕</div>`;
+
+  canvas.appendChild(el);
+  updateElbowGeometry(el);
+  bindShapeEvents(el);
+  bindLineEndpoints(el);
+  bindElbowMid(el);
+  return el;
+}
+
+function updateElbowGeometry(el) {
+  const pts = elbowPoints(el);
+  const pad = 20;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const L = Math.min(...xs) - pad, T = Math.min(...ys) - pad;
+  const W = Math.max(...xs) + pad - L, H = Math.max(...ys) + pad - T;
+  el.style.left = L + 'px'; el.style.top = T + 'px';
+  el.style.width = W + 'px'; el.style.height = H + 'px';
+
+  const svg = el.querySelector('.shape-svg');
+  svg.style.width = W + 'px'; svg.style.height = H + 'px';
+
+  const color  = el.dataset.color;
+  const lwidth = +el.dataset.lwidth || 2;
+  const dash   = el.dataset.dash;
+  const arrowS = el.dataset.arrowS === '1', arrowE = el.dataset.arrowE === '1';
+  const dashArr = dash === 'dashed' ? `${lwidth*4},${lwidth*3}` :
+                  dash === 'dotted' ? `${lwidth},${lwidth*2}` : 'none';
+  const mStart = arrowS ? 'url(#g-arr-start)' : 'none';
+  const mEnd   = arrowE ? 'url(#g-arr-end)'   : 'none';
+  const ptsStr = pts.map(p => `${p.x-L},${p.y-T}`).join(' ');
+
+  svg.innerHTML = `<polyline points="${ptsStr}" fill="none"
+    stroke="${color}" stroke-width="${lwidth}" stroke-linecap="round" stroke-linejoin="miter"
+    stroke-dasharray="${dashArr}" marker-start="${mStart}" marker-end="${mEnd}"/>`;
+
+  const p1 = el.querySelector('.shape-handle.p1');
+  const p2 = el.querySelector('.shape-handle.p2');
+  const last = pts[pts.length - 1];
+  if (p1) { p1.style.left = (pts[0].x - L) + 'px'; p1.style.top = (pts[0].y - T) + 'px'; }
+  if (p2) { p2.style.left = (last.x   - L) + 'px'; p2.style.top = (last.y   - T) + 'px'; }
+
+  // 轉角把手：只有四點路徑（有中段）才需要
+  const hm = el.querySelector('.elbow-mid');
+  if (hm) {
+    if (pts.length === 4) {
+      const mode = elbowMode(el);
+      hm.style.display = '';
+      hm.classList.toggle('h-move', mode === 'h');
+      hm.classList.toggle('v-move', mode === 'v');
+      hm.style.left = ((pts[1].x + pts[2].x) / 2 - L) + 'px';
+      hm.style.top  = ((pts[1].y + pts[2].y) / 2 - T) + 'px';
+    } else {
+      hm.style.display = 'none';
+    }
+  }
+}
+
+// 拖曳轉角把手 → 調整中段位置（避免多條線材重疊）
+function bindElbowMid(el) {
+  const hm = el.querySelector('.elbow-mid');
+  if (!hm) return;
+  hm.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    pushUndo();
+    const mode = elbowMode(el);
+    const mx0 = e.clientX, my0 = e.clientY;
+    const f0  = isFinite(parseFloat(el.dataset.mid)) ? parseFloat(el.dataset.mid) : 0.5;
+    const span = mode === 'h' ? (+el.dataset.x2 - +el.dataset.x1)
+                              : (+el.dataset.y2 - +el.dataset.y1);
+    const onMove = ev => {
+      if (!span) return;
+      const d = mode === 'h' ? (ev.clientX - mx0) / scale : (ev.clientY - my0) / scale;
+      el.dataset.mid = Math.min(1, Math.max(0, f0 + d / span));
+      updateElbowGeometry(el);
+      drawRulers();
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
+// 依型別重繪繪圖物件
+function refreshShape(el) {
+  const s = el.dataset.stype;
+  if (s === 'line')          updateLineGeometry(el);
+  else if (s === 'elbow')    updateElbowGeometry(el);
+  else if (s === 'polyline') updatePolylineGeometry(el);
+  else if (s === 'rect' || s === 'ellipse') updateRectGeometry(el);
+}
+
 // ── 折線繪製狀態 ──────────────────────────────────────────────────────────────
 let polyPoints  = [];   // 確認的頂點
+let polyRefs    = [];   // 對應頂點的設備連接點 ref（空字串 = 未吸附）
 let polyPreview = null; // 預覽 shape-item
 
 function polyCanvasCoord(ev) {
@@ -3660,26 +4038,29 @@ function polyCanvasCoord(ev) {
 }
 
 function setupPolyDrawing() {
-  // click：加一個頂點
+  // click：加一個頂點（自動吸附設備連接點）
   wrapper.addEventListener('click', ev => {
     if (drawTool !== 'polyline') return;
     if (ev.target.closest('#toolbar, #canvas-title, #ctx-menu')) return;
-    const { x, y } = polyCanvasCoord(ev);
-    polyPoints.push({ x, y });
+    const c = polyCanvasCoord(ev);
+    const s = snapPoint(c.x, c.y);
+    polyPoints.push({ x: s.x, y: s.y });
+    polyRefs.push(s.ref);
     if (!polyPreview) {
       pushUndo();
-      polyPreview = createPolyline([{x,y},{x,y}], { arrowS: false, arrowE: false });
+      polyPreview = createPolyline([{x:s.x,y:s.y},{x:s.x,y:s.y}], { arrowS: false, arrowE: false });
     } else {
-      polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|') + `|${x},${y}`;
+      polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|') + `|${s.x},${s.y}`;
       updatePolylineGeometry(polyPreview);
     }
   });
 
-  // mousemove：更新預覽終點
+  // mousemove：更新預覽終點（同樣吸附）
   wrapper.addEventListener('mousemove', ev => {
     if (drawTool !== 'polyline' || !polyPreview || polyPoints.length===0) return;
-    const { x, y } = polyCanvasCoord(ev);
-    polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|') + `|${x},${y}`;
+    const c = polyCanvasCoord(ev);
+    const s = snapPoint(c.x, c.y);
+    polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|') + `|${s.x},${s.y}`;
     updatePolylineGeometry(polyPreview);
   });
 
@@ -3688,14 +4069,17 @@ function setupPolyDrawing() {
     if (drawTool !== 'polyline' || !polyPreview) return;
     ev.preventDefault();
     // 移除最後一個 click 多加的點（dblclick = click + dblclick，多了一個）
-    if (polyPoints.length > 1) polyPoints.pop();
+    if (polyPoints.length > 1) { polyPoints.pop(); polyRefs.pop(); }
     if (polyPoints.length < 2) { polyPreview.remove(); }
     else {
       polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|');
+      // 首尾若落在設備連接點上 → 建立連接，設備移動時線條跟著走
+      setShapeRef(polyPreview, 'a1', polyRefs[0]);
+      setShapeRef(polyPreview, 'a2', polyRefs[polyRefs.length - 1]);
       updatePolylineGeometry(polyPreview);
       selectShape(polyPreview);
     }
-    polyPreview = null; polyPoints = [];
+    polyPreview = null; polyPoints = []; polyRefs = [];
     setDrawTool(null);
   });
 }
@@ -3708,13 +4092,18 @@ function bindLineEndpoints(el) {
       const ep = handle.dataset.ep;
       const mx0 = e.clientX, my0 = e.clientY;
       const ox = +el.dataset['x' + ep], oy = +el.dataset['y' + ep];
+      showAnchors(true);                       // 拖曳端點時顯示設備連接點
       const onMove = ev => {
-        el.dataset['x' + ep] = ox + (ev.clientX - mx0) / scale;
-        el.dataset['y' + ep] = oy + (ev.clientY - my0) / scale;
-        updateLineGeometry(el);
+        const s = snapPoint(ox + (ev.clientX - mx0) / scale,
+                            oy + (ev.clientY - my0) / scale);
+        el.dataset['x' + ep] = s.x;
+        el.dataset['y' + ep] = s.y;
+        setShapeRef(el, 'a' + ep, s.ref);
+        refreshShape(el);
         drawRulers();
       };
       const onUp = () => {
+        showAnchors(false);
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
       };
@@ -4030,10 +4419,10 @@ function showPropPanel(el, isShape) {
   } else {
     const stype = el.dataset.stype;
     document.getElementById('pp-title').textContent =
-      stype === 'line' ? t('line') : stype === 'polyline' ? t('polyline') :
+      stype === 'line' ? t('line') : stype === 'elbow' ? t('elbow') : stype === 'polyline' ? t('polyline') :
       stype === 'rect' ? t('rect') : stype === 'ellipse' ? t('ellipse') : t('textTool');
 
-    if (stype === 'line' || stype === 'polyline') {
+    if (stype === 'line' || stype === 'elbow' || stype === 'polyline') {
       document.getElementById('pp-line').style.display = 'flex';
       document.getElementById('pp-line-color').value = el.dataset.color   || '#e74c3c';
       document.getElementById('pp-line-width').value = el.dataset.lwidth  || 2;
@@ -4310,27 +4699,27 @@ function showPropPanel(el, isShape) {
   document.getElementById('pp-line-color').addEventListener('input', e => {
     if (!selectedShape) return;
     selectedShape.dataset.color = e.target.value;
-    selectedShape.dataset.stype === 'line' ? updateLineGeometry(selectedShape) : updatePolylineGeometry(selectedShape);
+    refreshShape(selectedShape);
   });
   document.getElementById('pp-line-width').addEventListener('input', e => {
     if (!selectedShape) return;
     selectedShape.dataset.lwidth = e.target.value;
-    selectedShape.dataset.stype === 'line' ? updateLineGeometry(selectedShape) : updatePolylineGeometry(selectedShape);
+    refreshShape(selectedShape);
   });
   document.getElementById('pp-line-dash').addEventListener('change', e => {
     if (!selectedShape) return;
     selectedShape.dataset.dash = e.target.value;
-    selectedShape.dataset.stype === 'line' ? updateLineGeometry(selectedShape) : updatePolylineGeometry(selectedShape);
+    refreshShape(selectedShape);
   });
   document.getElementById('pp-arrow-s').addEventListener('change', e => {
     if (!selectedShape) return;
     selectedShape.dataset.arrowS = e.target.checked ? '1' : '0';
-    selectedShape.dataset.stype === 'line' ? updateLineGeometry(selectedShape) : updatePolylineGeometry(selectedShape);
+    refreshShape(selectedShape);
   });
   document.getElementById('pp-arrow-e').addEventListener('change', e => {
     if (!selectedShape) return;
     selectedShape.dataset.arrowE = e.target.checked ? '1' : '0';
-    selectedShape.dataset.stype === 'line' ? updateLineGeometry(selectedShape) : updatePolylineGeometry(selectedShape);
+    refreshShape(selectedShape);
   });
 
   // Rect / Ellipse
@@ -4568,13 +4957,20 @@ function clearCanvasBg() {
 
 function buildSaveData() {
   const items = [];
-  canvas.querySelectorAll('.placed-item').forEach(el => {
+  canvas.querySelectorAll('.placed-item').forEach(el => items.push(serializeItem(el)));
+  return { version: 1, panX, panY, scale, items, shapes: buildShapeData(), fovHidden, bgImage, bgOpacity };
+}
+
+// 單一設備 → 純資料（存檔與複製貼上共用）
+function serializeItem(el) {
+  {
     const rEl = el.querySelector('.item-svg');
     const { w, h } = getElemSize(rEl);
     const lblEl = el.querySelector('.item-label');
     const label = lblEl ? lblEl.textContent : '';
     const labelHidden = lblEl ? lblEl.style.display === 'none' : false;
-    const item = { type: el.dataset.type, x: parseFloat(el.style.left), y: parseFloat(el.style.top),
+    const item = { type: el.dataset.type, uid: el.dataset.uid,
+                   x: parseFloat(el.style.left), y: parseFloat(el.style.top),
                    rotation: parseFloat(el.dataset.rotation) || 0, w, h, label, labelHidden };
     if (el.dataset.type === 'wall') item.wallColor = el.dataset.wallColor || '#7f8c8d';
     if (el.dataset.type === 'room') {
@@ -4615,25 +5011,33 @@ function buildSaveData() {
       item.imgSrc     = el.dataset.imgSrc || '';
       item.imgOpacity = parseFloat(el.dataset.imgOpacity) || 1;
     }
-    items.push(item);
-  });
-  return { version: 1, panX, panY, scale, items, shapes: buildShapeData(), fovHidden, bgImage, bgOpacity };
+    return item;
+  }
 }
 
 // ── 繪圖物件 (線條/折線/方框/圓框/文字) 存檔 ─────────────────────────────────
 function buildShapeData() {
   const out = [];
-  canvas.querySelectorAll('.shape-item').forEach(el => {
+  canvas.querySelectorAll('.shape-item').forEach(el => out.push(serializeShape(el)));
+  return out;
+}
+
+// 單一繪圖物件 → 純資料（存檔與複製貼上共用）
+function serializeShape(el) {
+  {
     const d = el.dataset;
     const s = { stype: d.stype };
-    if (d.stype === 'line') {
+    if (d.stype === 'line' || d.stype === 'elbow') {
       Object.assign(s, { x1:+d.x1, y1:+d.y1, x2:+d.x2, y2:+d.y2,
         color: d.color, lwidth: +d.lwidth || 2, dash: d.dash,
-        arrowS: d.arrowS === '1', arrowE: d.arrowE === '1', cable: d.cable || '' });
+        arrowS: d.arrowS === '1', arrowE: d.arrowE === '1', cable: d.cable || '',
+        a1: d.a1 || '', a2: d.a2 || '' });
+      if (d.stype === 'elbow') s.mid = isFinite(parseFloat(d.mid)) ? parseFloat(d.mid) : 0.5;
     } else if (d.stype === 'polyline') {
       Object.assign(s, { points: d.points,
         color: d.color, lwidth: +d.lwidth || 2, dash: d.dash,
-        arrowS: d.arrowS === '1', arrowE: d.arrowE === '1', cable: d.cable || '' });
+        arrowS: d.arrowS === '1', arrowE: d.arrowE === '1', cable: d.cable || '',
+        a1: d.a1 || '', a2: d.a2 || '' });
     } else if (d.stype === 'text') {
       const tb = el.querySelector('.text-box');
       Object.assign(s, { x: parseFloat(el.style.left), y: parseFloat(el.style.top),
@@ -4646,9 +5050,8 @@ function buildShapeData() {
         stroke: d.stroke, fill: d.fill, strokeW: +d.strokeW || 2,
         fillOpacity: +d.fillOpacity || 0.15 });
     }
-    out.push(s);
-  });
-  return out;
+    return s;
+  }
 }
 
 function restoreShapes(shapes) {
@@ -4657,6 +5060,10 @@ function restoreShapes(shapes) {
     if (s.stype === 'line') {
       el = createLine(s.x1, s.y1, s.x2, s.y2,
         { color: s.color, width: s.lwidth, dash: s.dash, arrowS: s.arrowS, arrowE: s.arrowE });
+    } else if (s.stype === 'elbow') {
+      el = createElbow(s.x1, s.y1, s.x2, s.y2,
+        { color: s.color, width: s.lwidth, dash: s.dash, arrowS: s.arrowS, arrowE: s.arrowE,
+          mid: isFinite(parseFloat(s.mid)) ? parseFloat(s.mid) : 0.5 });
     } else if (s.stype === 'polyline') {
       const pts = (s.points || '').split('|').filter(Boolean)
         .map(p => { const [x, y] = p.split(','); return { x: +x, y: +y }; });
@@ -4670,7 +5077,11 @@ function restoreShapes(shapes) {
       el = createRect(s.stype, s.x, s.y, s.w, s.h,
         { stroke: s.stroke, fill: s.fill, strokeW: s.strokeW, fillOpacity: s.fillOpacity });
     }
-    if (el && s.cable) { el.dataset.cable = s.cable; el.title = s.cable; }
+    if (!el) return;
+    if (s.cable) { el.dataset.cable = s.cable; el.title = s.cable; }
+    setShapeRef(el, 'a1', s.a1);          // 還原與設備的連接
+    setShapeRef(el, 'a2', s.a2);
+    if (s.stype === 'elbow') updateElbowGeometry(el);   // 走線方式取決於連接方位
   });
 }
 
@@ -4719,8 +5130,26 @@ function applyLoadedData(data, fname) {
   clearCanvas();
   panX = data.panX ?? 0; panY = data.panY ?? 0; scale = data.scale ?? 1;
   applyTransform();
-  (data.items || []).forEach(item => {
+  (data.items || []).forEach(materializeItem);
+  restoreShapes(data.shapes);
+  updateAttachedShapes();
+  setAllFOV(data.fovHidden ?? false);
+  bgImage   = data.bgImage   || null;
+  bgOpacity = data.bgOpacity ?? 0.4;
+  applyCanvasBg();
+  if (selectedItem) { selectedItem.classList.remove('selected'); selectedItem = null; }
+  setFileName(fname);
+}
+
+// 純資料 → 畫布上的設備（載入與複製貼上共用）
+function materializeItem(item) {
+  {
     const el = placeItem(item.type, item.x, item.y, item.rotation, item.w, item.h, true, true);
+    if (item.uid) {
+      el.dataset.uid = item.uid;
+      const m = /^u(\d+)$/.exec(item.uid);           // 流水號跟上檔案裡的最大值
+      if (m) uidSeq = Math.max(uidSeq, +m[1]);
+    }
     if (item.label !== undefined) {
       const lblEl = el.querySelector('.item-label');
       if (lblEl) { lblEl.textContent = item.label; lblEl.style.display = item.labelHidden ? 'none' : ''; }
@@ -4782,14 +5211,8 @@ function applyLoadedData(data, fname) {
       const imgEl = el.querySelector('img.item-svg');
       if (imgEl) { imgEl.src = item.imgSrc; imgEl.style.opacity = item.imgOpacity ?? 1; }
     }
-  });
-  restoreShapes(data.shapes);
-  setAllFOV(data.fovHidden ?? false);
-  bgImage   = data.bgImage   || null;
-  bgOpacity = data.bgOpacity ?? 0.4;
-  applyCanvasBg();
-  if (selectedItem) { selectedItem.classList.remove('selected'); selectedItem = null; }
-  setFileName(fname);
+    return el;
+  }
 }
 
 async function loadFile() {
