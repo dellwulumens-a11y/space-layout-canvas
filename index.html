@@ -98,39 +98,34 @@
   #ui-confirm .uc-btns .uc-ok { background: #1a4a8a; border-color: #2a6acf; color: #fff; }
   #ui-confirm .uc-btns .uc-ok:hover { background: #2a5aaa; }
 
-  /* ── 繪圖線條顏色 / 線材用途 ── */
+  /* ── 繪圖線條顏色（純色票，不加文字標籤） ── */
   #draw-color-row {
     display: flex; align-items: center; gap: 6px;
-    padding: 5px 6px; margin-bottom: 2px;
+    padding: 5px 6px; margin-bottom: 3px;
     background: #0d1b3e; border: 1px solid #0f3460; border-radius: 5px;
-    font-size: 10px; color: #8ab6e8;
-  }
-  #draw-color-row input[type="color"] {
-    width: 26px; height: 20px; padding: 0;
-    background: none; border: 1px solid #1a4a8a; border-radius: 3px; cursor: pointer;
   }
   #draw-color-row .dc-swatch {
-    width: 16px; height: 16px; border-radius: 3px;
+    width: 20px; height: 20px; border-radius: 3px;
     border: 1px solid #4a6a9a; flex-shrink: 0;
   }
+  #draw-color-row .dc-spacer { flex: 1; }
+  #draw-color-row input[type="color"] {
+    width: 30px; height: 20px; padding: 0;
+    background: none; border: 1px solid #1a4a8a; border-radius: 3px; cursor: pointer;
+  }
   #cable-presets {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
-    margin-bottom: 4px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    margin-bottom: 5px;
   }
   #cable-presets button {
-    display: flex; align-items: center; gap: 4px;
-    padding: 4px 5px; font-size: 9.5px;
-    background: #0f3460; color: #ccd;
+    height: 22px; padding: 0;
     border: 1px solid #1a4a8a; border-radius: 4px;
-    cursor: pointer; text-align: left;
-    transition: background 0.12s, border-color 0.12s;
+    cursor: pointer; font-size: 0;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+    transition: transform 0.1s, border-color 0.12s;
   }
-  #cable-presets button:hover { background: #1a5fa0; color: #fff; }
-  #cable-presets button.active { border-color: #4a9ae8; background: #1a5fa0; color: #fff; }
-  #cable-presets button i {
-    width: 10px; height: 10px; border-radius: 2px;
-    border: 1px solid #6a8ab0; flex-shrink: 0;
-  }
+  #cable-presets button:hover { transform: scale(1.08); border-color: #6aa8e8; }
+  #cable-presets button.active { border-color: #7ec8ff; box-shadow: 0 0 0 2px rgba(126,200,255,0.35); }
 
   .component-item {
     display: flex;
@@ -772,12 +767,12 @@
       <span id="draw-header-arrow">▼</span>
     </div>
     <div id="draw-dropdown">
-      <!-- 線條顏色：用來標示不同線材用途 -->
+      <!-- 線條顏色：色票快速選單（用來標示不同線材用途，不預設名稱） -->
       <div id="draw-color-row">
         <span class="dc-swatch" id="draw-color-swatch"></span>
-        <span id="draw-color-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">HDMI</span>
+        <span class="dc-spacer"></span>
         <input type="color" id="draw-color" value="#e74c3c" title="自訂線條顏色"
-               oninput="setDrawColor(this.value, null)">
+               oninput="setDrawColor(this.value)">
       </div>
       <div id="cable-presets"></div>
       <button class="draw-btn" data-tool="line" onclick="setDrawTool('line')">
@@ -3012,7 +3007,6 @@ wrapper.addEventListener('mousedown', e => {
   pushUndo();
   if (drawTool === 'line') {
     drawPreview = createLine(sx, sy, sx, sy, { arrowS: false, arrowE: true });
-    if (drawCable) { drawPreview.dataset.cable = drawCable; drawPreview.title = drawCable; }
   } else {
     drawPreview = createRect(drawTool, sx, sy, 1, 1);
   }
@@ -3437,40 +3431,28 @@ function showToast(msg) {
 let drawStart   = null;   // { x, y } in canvas px
 let drawPreview = null;   // shape-item div being drawn
 
-// ── 線材用途配色 (繪圖線條顏色) ────────────────────────────────────────────────
-const CABLE_PRESETS = [
-  { name: 'PoE',     color: '#111111' },
-  { name: 'HDMI',    color: '#e74c3c' },
-  { name: 'USB',     color: '#2980b9' },
-  { name: 'Audio',   color: '#27ae60' },
-  { name: 'Fiber',   color: '#f1c40f' },
-  { name: 'Power',   color: '#e67e22' },
-  { name: 'RS-232',  color: '#8e44ad' },
-  { name: 'Other',   color: '#7f8c8d' },
+// ── 繪圖線條配色（純色票，不帶線材名稱：線材種類由使用者自行定義）─────────────
+const DRAW_COLORS = [
+  '#111111', '#e74c3c', '#2980b9', '#27ae60',
+  '#f1c40f', '#e67e22', '#8e44ad', '#7f8c8d',
 ];
 let drawColor = '#e74c3c';
-let drawCable = 'HDMI';
 
-// color: 顏色；cable: 線材名稱 (null = 自訂顏色)
-function setDrawColor(color, cable) {
+function setDrawColor(color) {
   drawColor = color;
-  drawCable = cable || '';
   const sw = document.getElementById('draw-color-swatch');
-  const nm = document.getElementById('draw-color-name');
   const ci = document.getElementById('draw-color');
   if (sw) sw.style.background = color;
-  if (nm) nm.textContent = drawCable || color.toUpperCase();
   if (ci && ci.value.toLowerCase() !== color.toLowerCase()) ci.value = color;
   document.querySelectorAll('#cable-presets button').forEach(b =>
     b.classList.toggle('active', b.dataset.color.toLowerCase() === color.toLowerCase()));
   // 若目前有選取的繪圖物件，一併套用
-  if (selectedShape) applyShapeColor(selectedShape, color, drawCable);
+  if (selectedShape) applyShapeColor(selectedShape, color);
 }
 
 // 把顏色套用到既有繪圖物件
-function applyShapeColor(el, color, cable) {
+function applyShapeColor(el, color) {
   const st = el.dataset.stype;
-  if (cable) { el.dataset.cable = cable; el.title = cable; }
   if (st === 'line') {
     el.dataset.color = color; updateLineGeometry(el);
     const inp = document.getElementById('pp-line-color'); if (inp) inp.value = color;
@@ -3490,13 +3472,11 @@ function applyShapeColor(el, color, cable) {
 function initCablePresets() {
   const box = document.getElementById('cable-presets');
   if (!box) return;
-  box.innerHTML = CABLE_PRESETS.map(c =>
-    `<button type="button" data-color="${c.color}" data-cable="${c.name}" title="${c.name} — ${c.color}">
-       <i style="background:${c.color}"></i>${c.name}
-     </button>`).join('');
+  box.innerHTML = DRAW_COLORS.map(c =>
+    `<button type="button" data-color="${c}" style="background:${c}" title="${c.toUpperCase()}"></button>`).join('');
   box.querySelectorAll('button').forEach(b =>
-    b.addEventListener('click', () => setDrawColor(b.dataset.color, b.dataset.cable)));
-  setDrawColor(drawColor, drawCable);
+    b.addEventListener('click', () => setDrawColor(b.dataset.color)));
+  setDrawColor(drawColor);
 }
 
 function setDrawTool(tool) {
@@ -3689,7 +3669,6 @@ function setupPolyDrawing() {
     if (!polyPreview) {
       pushUndo();
       polyPreview = createPolyline([{x,y},{x,y}], { arrowS: false, arrowE: false });
-      if (drawCable) { polyPreview.dataset.cable = drawCable; polyPreview.title = drawCable; }
     } else {
       polyPreview.dataset.points = polyPoints.map(p=>`${p.x},${p.y}`).join('|') + `|${x},${y}`;
       updatePolylineGeometry(polyPreview);
