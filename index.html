@@ -204,6 +204,10 @@
   .placed-item:hover .item-svg { filter: drop-shadow(0 0 6px rgba(30,120,220,0.7)); }
   .item-label { cursor: text; border-radius: 3px; padding: 0 2px; }
   .item-label:hover { background: rgba(30,144,255,0.12); }
+  /* 標籤需為 block 才能套 transform（保持水平）；字級由 JS 動態指定 */
+  .item-label { display: inline-block; transform-origin: 50% 50%; white-space: nowrap; }
+  .item-label-input { transform-origin: 50% 50%; }
+  #pp-common { margin-top: 2px; }
   .item-label-input {
     font-size: 10px; font-weight: 600; color: #222;
     border: 1px solid #1e90ff; border-radius: 3px;
@@ -235,6 +239,25 @@
   }
   .ctx-item:hover { background: #e8f0fe; color: #1a73e8; }
   .ctx-sep { height: 1px; background: #e0e0e0; margin: 3px 0; }
+  /* 右鍵子選單（旋轉角度） */
+  .ctx-sub { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ctx-arrow { font-size: 10px; opacity: 0.55; }
+  .ctx-submenu {
+    display: none;
+    position: absolute;
+    top: -5px; left: 100%;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    padding: 4px 0;
+    min-width: 120px;
+    z-index: 1;
+  }
+  .ctx-sub:hover > .ctx-submenu { display: block; }
+  #ctx-menu.flip-left .ctx-submenu { left: auto; right: 100%; }
+  .ctx-cur { padding: 4px 16px 6px; font-size: 11px; color: #888; cursor: default; }
+  .ctx-cur:hover { background: transparent; color: #888; }
 
   /* SVG 外層包裝，供絕對定位的把手使用 */
   .item-wrap {
@@ -1246,6 +1269,22 @@
   <div id="ctx-menu">
     <div class="ctx-item" data-action="duplicate" data-i18n="ctxDuplicate">⧉ 複製</div>
     <div class="ctx-sep"></div>
+    <div class="ctx-item ctx-sub">
+      <span data-i18n="ctxRotate">⟳ 旋轉</span><span class="ctx-arrow">▸</span>
+      <div class="ctx-submenu">
+        <div class="ctx-cur" id="ctx-rot-cur">0°</div>
+        <div class="ctx-item" data-action="rotate" data-deg="45">↻ 45°</div>
+        <div class="ctx-item" data-action="rotate" data-deg="90">↻ 90°</div>
+        <div class="ctx-item" data-action="rotate" data-deg="180">↻ 180°</div>
+        <div class="ctx-item" data-action="rotate" data-deg="360">↻ 360°</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="rotate" data-deg="-45">↺ -45°</div>
+        <div class="ctx-item" data-action="rotate" data-deg="-90">↺ -90°</div>
+        <div class="ctx-sep"></div>
+        <div class="ctx-item" data-action="rotate-set" data-deg="0" data-i18n="ctxRotateReset">⌖ 歸零 0°</div>
+      </div>
+    </div>
+    <div class="ctx-sep"></div>
     <div class="ctx-item" data-action="front" data-i18n="ctxFront">⬆ 到最上層</div>
     <div class="ctx-item" data-action="forward" data-i18n="ctxForward">↑ 往上一層</div>
     <div class="ctx-sep"></div>
@@ -1364,6 +1403,17 @@
       <option value="微軟正黑體,sans-serif">微軟正黑體</option>
     </select></div>
   </div>
+  <div id="pp-common" class="pp-section" style="display:none">
+    <div class="sp-row">
+      <label data-i18n="rotationDeg">旋轉角度</label>
+      <input type="number" id="pp-rot-deg" min="-360" max="360" step="1"><span>°</span>
+    </div>
+    <div class="sp-row" id="pp-label-row">
+      <label data-i18n="labelSize">字體大小</label>
+      <input type="number" id="pp-label-size" min="6" max="72" step="1">
+      <button class="settings-act-btn" id="pp-label-auto" data-i18n="labelAuto" data-i18n-title="labelAutoTitle" title="改回跟著物件大小等比例縮放">自動</button>
+    </div>
+  </div>
   <div id="pp-image" class="pp-section" style="display:none">
     <div class="sp-row"><label data-i18n="width">寬</label><input type="number" id="pp-img-w" min="10" max="5000" step="1"><span>cm</span></div>
     <div class="sp-row"><label data-i18n="depth2">深</label><input type="number" id="pp-img-h" min="10" max="5000" step="1"><span>cm</span></div>
@@ -1431,6 +1481,9 @@ const I18N = {
     // 右鍵選單
     ctxDuplicate:'⧉ 複製', ctxFront:'⬆ 到最上層', ctxForward:'↑ 往上一層',
     ctxBackward:'↓ 往下一層', ctxBack:'⬇ 到最下層',
+    ctxRotate:'⟳ 旋轉', ctxRotateReset:'⌖ 歸零 0°',
+    labelSize:'字體大小', labelAuto:'自動', labelAutoTitle:'改回跟著物件大小等比例縮放',
+    rotationDeg:'旋轉角度',
     // 屬性面板
     propTitle:'屬性', depth:'深度', color:'顏色', opacity:'透明度', streamURL:'串流URL', stream:'▶ 串流',
     tableColor:'桌面顏色', chairColor:'椅面顏色', surfaceColor:'面板顏色',
@@ -1478,6 +1531,9 @@ const I18N = {
     sendBackTitle:'Send to Back', bringFrontTitle:'Bring to Front',
     ctxDuplicate:'⧉ Duplicate', ctxFront:'⬆ Bring to Front', ctxForward:'↑ Move Forward',
     ctxBackward:'↓ Move Backward', ctxBack:'⬇ Send to Back',
+    ctxRotate:'⟳ Rotate', ctxRotateReset:'⌖ Reset to 0°',
+    labelSize:'Label Size', labelAuto:'Auto', labelAutoTitle:'Back to auto-scaling with object size',
+    rotationDeg:'Rotation',
     propTitle:'Properties', depth:'Depth', color:'Color', opacity:'Opacity', streamURL:'Stream URL', stream:'▶ Stream',
     tableColor:'Table Color', chairColor:'Chair Color', surfaceColor:'Surface Color',
     width:'W', depth2:'D', tableEdge:'Border W', length:'Length', thickness:'Thick', wallThick:'Wall Thick',
@@ -1516,6 +1572,16 @@ const safeStore = (() => {
 
 let lang = safeStore.get('lang') || 'en';
 const t = key => (I18N[lang] || I18N.zh)[key] ?? key;
+
+// 元件顯示名稱：字典沒有時退回 componentDefs 的英文名，避免畫面直接顯示
+// comp_xxx 這個內部 key（t() 查不到時是回傳 key 本身，不是空值）
+function compLabel(type) {
+  const dict = I18N[lang] || I18N.en;
+  const name = dict['comp_' + type];
+  if (name) return name;
+  const def = (typeof componentDefs !== 'undefined') && componentDefs[type];
+  return (def && def.label) || type;
+}
 
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
@@ -2176,6 +2242,7 @@ function applyVariant(el, type, id, opts = {}) {
   // 換圖後重新套用顏色設定（麥克風等可換色元件）
   if (el.dataset.itemColor) updateItemColor(el, el.dataset.itemColor);
   syncFov(el);
+  refreshLabel(el);
   return v;
 }
 
@@ -2470,6 +2537,7 @@ function updateTieredSeating(el) {
   svgEl.style.height = totalH + 'px'; svgEl.setAttribute('height', totalH);
   el.style.left = (cx - totalW / 2) + 'px';
   el.style.top  = (cy - totalH / 2) + 'px';
+  el.style.width = totalW + 'px';
   el.style.transformOrigin = `${totalW / 2}px ${totalH / 2}px`;
   svgEl.setAttribute('viewBox', `0 0 ${totalW.toFixed(1)} ${totalH.toFixed(1)}`);
   let rects = '';
@@ -2492,6 +2560,7 @@ function updateTieredSeating(el) {
     }
   }
   svgEl.innerHTML = rects;
+  refreshLabel(el);
   drawRulers();
 }
 
@@ -2518,6 +2587,7 @@ function updateGridSeating(el) {
   svgEl.style.height = totalH + 'px'; svgEl.setAttribute('height', totalH);
   el.style.left = (cx - totalW / 2) + 'px';
   el.style.top  = (cy - totalH / 2) + 'px';
+  el.style.width = totalW + 'px';
   el.style.transformOrigin = `${totalW / 2}px ${totalH / 2}px`;
   svgEl.setAttribute('viewBox', `0 0 ${totalW.toFixed(1)} ${totalH.toFixed(1)}`);
   let rects = '';
@@ -2534,6 +2604,7 @@ function updateGridSeating(el) {
     }
   }
   svgEl.innerHTML = rects;
+  refreshLabel(el);
   drawRulers();
 }
 
@@ -2594,6 +2665,10 @@ function attachLabelEdit(span) {
     const input = document.createElement('input');
     input.className = 'item-label-input';
     input.value = oldText;
+    // 輸入框沿用標籤的字級與方向，編輯時不會突然變小或歪掉
+    const host = span.closest('.placed-item');
+    if (span.style.fontSize)  input.style.fontSize  = span.style.fontSize;
+    if (span.style.transform) input.style.transform = span.style.transform;
     span.replaceWith(input);
     input.focus(); input.select();
     const commit = () => {
@@ -2601,6 +2676,7 @@ function attachLabelEdit(span) {
       span.textContent = val;
       span.style.display = val ? '' : 'none';
       input.replaceWith(span);
+      if (host) refreshLabel(host);
     };
     input.addEventListener('blur', commit);
     input.addEventListener('keydown', ev => {
@@ -2615,6 +2691,98 @@ function getElemSize(t) {
     ? { w: parseFloat(t.getAttribute('width')),  h: parseFloat(t.getAttribute('height')) }
     : { w: parseFloat(t.style.width),             h: parseFloat(t.style.height) };
 }
+// ── 物件標籤：字級隨物件等比例縮放 + 永遠保持水平 ───────────────────────────
+const LABEL_BASE_FONT = 10;   // 原始設計尺寸下的字級
+const LABEL_MIN_FONT  = 8;
+const LABEL_MAX_FONT  = 32;
+const LABEL_GAP       = 3;    // 對應 .placed-item 的 gap: 3px
+// 座位排列類的尺寸由「座位數」決定而非拖曳縮放，比例基準無意義 → 不自動縮放
+const LABEL_NO_AUTOSCALE = ['chair_tiered', 'chair_grid'];
+
+// 該元件的「原始設計尺寸」，用來算縮放倍率
+function baseItemSize(el) {
+  const type = el.dataset.type;
+  if (hasVariants(type)) {
+    const v = getVariant(type, el.dataset.variant);
+    if (v) return { w: v.pw || v.w, h: v.ph || v.h };
+  }
+  const def = componentDefs[type];
+  return def ? { w: def.pw || def.w, h: def.ph || def.h } : null;
+}
+
+// 依目前物件大小算出自動字級
+function autoLabelFont(el) {
+  if (LABEL_NO_AUTOSCALE.includes(el.dataset.type)) return LABEL_BASE_FONT;
+  const svgEl = el.querySelector('.item-svg');
+  const base  = baseItemSize(el);
+  if (!svgEl || !base || !base.w || !base.h) return LABEL_BASE_FONT;
+  const { w, h } = getElemSize(svgEl);
+  if (!w || !h) return LABEL_BASE_FONT;
+  const k = Math.sqrt((w / base.w) * (h / base.h));   // 面積比開根號 = 邊長倍率
+  return Math.min(LABEL_MAX_FONT, Math.max(LABEL_MIN_FONT, LABEL_BASE_FONT * k));
+}
+
+// 套用字級：dataset.labelSize 有值 → 手動指定；否則自動等比例
+function updateLabelFont(el) {
+  const lbl = el.querySelector('.item-label') || el.querySelector('.item-label-input');
+  if (!lbl) return;
+  const manual = parseFloat(el.dataset.labelSize);
+  const size = manual > 0 ? manual : autoLabelFont(el);
+  lbl.style.fontSize = (Math.round(size * 10) / 10) + 'px';
+}
+
+// 標籤完全不受物件旋轉影響：反向抵銷旋轉（保持水平）＋往下讓開旋轉後的外框
+// （避免被轉過來的物件蓋住）。
+function updateLabelOrientation(el) {
+  const lbl = el.querySelector('.item-label') || el.querySelector('.item-label-input');
+  if (!lbl) return;
+  const rot = parseFloat(el.dataset.rotation) || 0;
+  if (!rot || lbl.style.display === 'none') {
+    lbl.style.transform = '';
+    lbl.style.transformOrigin = '';
+    return;
+  }
+  const svgEl = el.querySelector('.item-svg');
+  const wrap  = el.querySelector('.item-wrap');
+  const { w, h } = svgEl ? getElemSize(svgEl) : { w: 0, h: 0 };
+  if (!w || !h || !wrap) { lbl.style.transform = `rotate(${-rot}deg)`; return; }
+
+  const rad = rot * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+
+  // 物件實際的旋轉支點（與 el.style.transformOrigin 一致，容器座標系）
+  const po = (el.style.transformOrigin || '').split(' ').map(parseFloat);
+  const pivot = { x: isFinite(po[0]) ? po[0] : w / 2, y: isFinite(po[1]) ? po[1] : h / 2 };
+
+  // 物件中心繞支點旋轉後的位置（支點不一定等於物件中心）
+  const c  = { x: wrap.offsetLeft + w / 2, y: wrap.offsetTop + h / 2 };
+  const v  = { x: c.x - pivot.x, y: c.y - pivot.y };
+  const c2 = { x: pivot.x + v.x * cos - v.y * sin, y: pivot.y + v.x * sin + v.y * cos };
+
+  // 目標：水平置中於旋轉後的物件、且緊貼旋轉後外框的下緣
+  const bboxH = Math.abs(w * sin) + Math.abs(h * cos);
+  const lw = lbl.offsetWidth, lh = lbl.offsetHeight;
+  const want = { x: c2.x, y: c2.y + bboxH / 2 + LABEL_GAP + lh / 2 };
+  const now  = { x: lbl.offsetLeft + lw / 2, y: lbl.offsetTop + lh / 2 };
+
+  // rotate(-rot) 需繞與物件相同的支點才會完全抵銷；換算到標籤自身座標系
+  lbl.style.transformOrigin =
+    `${(pivot.x - lbl.offsetLeft).toFixed(1)}px ${(pivot.y - lbl.offsetTop).toFixed(1)}px`;
+  // 父層旋轉 R 與 rotate(-rot) 抵銷後，淨結果就是後面這段純位移
+  lbl.style.transform =
+    `rotate(${-rot}deg) translate(${(want.x - now.x).toFixed(1)}px, ${(want.y - now.y).toFixed(1)}px)`;
+}
+
+function refreshLabel(el) { updateLabelFont(el); updateLabelOrientation(el); }
+
+// 由其他途徑（右鍵選單、把手拖曳）改變角度後，讓右上面板的角度欄位跟著顯示
+function syncRotInput(el) {
+  if (el !== selectedItem) return;
+  const inp = document.getElementById('pp-rot-deg');
+  if (!inp || document.activeElement === inp) return;   // 正在輸入時不要覆寫
+  inp.value = Math.round((((parseFloat(el.dataset.rotation) || 0) % 360) + 360) % 360);
+}
+
 function setElemSize(t, w, h) {
   if (t.tagName.toLowerCase() === 'svg') {
     t.setAttribute('width', w); t.setAttribute('height', h);
@@ -2639,6 +2807,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
   el.style.left = x + 'px';
   el.style.top  = y + 'px';
   el.style.transform = `rotate(${rotation}deg)`;
+  el.style.width = svgW + 'px';
   el.style.transformOrigin = `${svgW/2}px ${svgH/2}px`;
   el.dataset.rotation = rotation;
   el.dataset.type = type;
@@ -2666,7 +2835,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
       </div>
       ${HANDLES}
     </div>
-    <span class="item-label">${t('comp_' + type) || def.label}</span>
+    <span class="item-label">${compLabel(type)}</span>
     <div class="rotate-handle" title="旋轉">↻</div>`;
   } else if (type === 'image') {
     el.innerHTML = `
@@ -2684,7 +2853,7 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
       <svg class="item-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${def.w} ${def.h}" preserveAspectRatio="none">${def.svg}</svg>
       ${HANDLES}
     </div>
-    <span class="item-label">${t('comp_' + type) || def.label}</span>
+    <span class="item-label">${compLabel(type)}</span>
     <div class="rotate-handle" title="旋轉">↻</div>`;
 
     // 桌椅/麥克風顏色控制面板
@@ -2718,6 +2887,8 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
   // 雙擊標籤修改名稱
   attachLabelEdit(el.querySelector('.item-label'));
 
+  refreshLabel(el);
+
   // Delete
   el.querySelector('.delete-btn').addEventListener('mousedown', e => {
     e.stopPropagation();
@@ -2743,6 +2914,8 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
       const newRot = startRot + (ev.clientY - startY) * 1.5;
       el.dataset.rotation = newRot;
       el.style.transform = `rotate(${newRot}deg)`;
+      updateLabelOrientation(el);
+      syncRotInput(el);
       updateAttachedShapes();
     };
     const onUp = () => {
@@ -2812,6 +2985,8 @@ function placeItem(type, x, y, rotation, initW, initH, noAutoSelect = false, ski
         const ncy = Py - ax1*sinA - ay1*cosA;
 
         setElemSize(rEl, nw, nh);
+        refreshLabel(el);
+        el.style.width = nw + 'px';
         el.style.transformOrigin = `${nw/2}px ${nh/2}px`;
         el.style.left = (ncx - nw/2) + 'px';
         el.style.top  = (ncy - nh/2) + 'px';
@@ -2974,9 +3149,11 @@ function resizePlacedItem(el, nw, nh) {
   const cx = parseFloat(el.style.left) + ow / 2;
   const cy = parseFloat(el.style.top)  + oh / 2;
   setElemSize(rEl, nw, nh);
+  el.style.width = nw + 'px';
   el.style.transformOrigin = `${nw/2}px ${nh/2}px`;
   el.style.left = (cx - nw / 2) + 'px';
   el.style.top  = (cy - nh / 2) + 'px';
+  refreshLabel(el);
   if (el.classList.contains('has-fov'))        updateFOV(el);
   if (el.dataset.type === 'room')              updateRoomFloor(el);
   if (el.dataset.type.startsWith('table_'))   updateTableShape(el);
@@ -3336,6 +3513,38 @@ function pasteClipboard() {
 // ── 右鍵選單（圖層管理）────────────────────────────────────────────────────────
 const ctxMenu = document.getElementById('ctx-menu');
 
+// 旋轉目標：多選時全部套用，否則只套用目前選取物件
+function rotationTargets() {
+  if (selectedItems && selectedItems.size) return [...selectedItems];
+  return selectedItem ? [selectedItem] : [];
+}
+function applyRotation(el, deg) {
+  let d = deg % 360;
+  if (d < 0) d += 360;
+  el.dataset.rotation = d;
+  el.style.transform = `rotate(${d}deg)`;
+  updateLabelOrientation(el);
+  syncRotInput(el);
+}
+// 以目前角度為基準累加（45 / 90 / 180 / 360…）
+function rotateSelection(delta) {
+  const targets = rotationTargets();
+  if (!targets.length || !delta) return;
+  pushUndo();
+  targets.forEach(el => applyRotation(el, (parseFloat(el.dataset.rotation) || 0) + delta));
+  updateAttachedShapes();
+  drawRulers();
+}
+// 直接設定絕對角度（歸零用）
+function setSelectionRotation(deg) {
+  const targets = rotationTargets();
+  if (!targets.length) return;
+  pushUndo();
+  targets.forEach(el => applyRotation(el, deg));
+  updateAttachedShapes();
+  drawRulers();
+}
+
 document.addEventListener('contextmenu', e => {
   const target = e.target.closest('.placed-item');
   if (!target) { ctxMenu.style.display = 'none'; return; }
@@ -3343,12 +3552,19 @@ document.addEventListener('contextmenu', e => {
   // 右鍵點到已選取物件 → 保留多選；否則單選
   if (!selectedItems.has(target)) selectItem(target);
   // 避免選單超出視窗右/下邊界
-  const mw = 150, mh = 160;
+  const mw = 150, mh = 200;
   const left = Math.min(e.clientX, window.innerWidth  - mw);
   const top  = Math.min(e.clientY, window.innerHeight - mh);
   ctxMenu.style.left = left + 'px';
   ctxMenu.style.top  = top  + 'px';
   ctxMenu.style.display = 'block';
+  // 顯示目前角度；子選單若會超出右邊界則改向左展開
+  const curEl = document.getElementById('ctx-rot-cur');
+  if (curEl) {
+    const cur = Math.round((((parseFloat(target.dataset.rotation) || 0) % 360) + 360) % 360);
+    curEl.textContent = (lang === 'en' ? 'Current: ' : '目前：') + cur + '°';
+  }
+  ctxMenu.classList.toggle('flip-left', left + mw + 130 > window.innerWidth);
 });
 
 ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
@@ -3371,6 +3587,8 @@ ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
       case 'forward': { const nx = el.nextElementSibling; if (nx) canvas.insertBefore(nx, el); break; }
       case 'backward': { const pv = el.previousElementSibling; if (pv) canvas.insertBefore(el, pv); break; }
       case 'back':     canvas.insertBefore(el, canvas.firstChild); break;
+      case 'rotate':     rotateSelection(parseFloat(item.dataset.deg) || 0); break;
+      case 'rotate-set': setSelectionRotation(parseFloat(item.dataset.deg) || 0); break;
     }
     ctxMenu.style.display = 'none';
   });
@@ -4330,6 +4548,17 @@ function showPropPanel(el, isShape) {
     const lbl  = el.querySelector('.item-label');
     document.getElementById('pp-title').textContent = (lbl && lbl.textContent.trim()) ? lbl.textContent.trim() : type;
 
+    // 旋轉角度 + 標籤字體大小：所有設備通用
+    document.getElementById('pp-common').style.display = 'flex';
+    document.getElementById('pp-rot-deg').value =
+      Math.round((((parseFloat(el.dataset.rotation) || 0) % 360) + 360) % 360);
+    document.getElementById('pp-label-row').style.display = lbl ? 'flex' : 'none';
+    if (lbl) {
+      const lsInp = document.getElementById('pp-label-size');
+      lsInp.value = Math.round(parseFloat(el.dataset.labelSize) || autoLabelFont(el));
+      document.getElementById('pp-label-auto').style.display = el.dataset.labelSize ? '' : 'none';
+    }
+
     if (el.classList.contains('has-fov')) {
       document.getElementById('pp-camera').style.display = 'flex';
       document.getElementById('pp-fov-angle').value   = el.dataset.fovAngle   || 70;
@@ -4414,7 +4643,7 @@ function showPropPanel(el, isShape) {
       document.getElementById('pp-door-dir').value = el.dataset.doorDir || 'left';
       pp.classList.add('visible');
     } else {
-      hidePropPanel();
+      pp.classList.add('visible');   // 沒有其他專屬屬性，但仍可調角度 / 字體
     }
   } else {
     const stype = el.dataset.stype;
@@ -4446,6 +4675,33 @@ function showPropPanel(el, isShape) {
 }
 
 (function setupPropPanel() {
+  // 手動旋轉角度（可填 30 / 60 等任意角度）
+  document.getElementById('pp-rot-deg').addEventListener('input', e => {
+    if (!selectedItem) return;
+    const v = parseFloat(e.target.value);
+    if (!isFinite(v)) return;
+    applyRotation(selectedItem, v);
+    updateAttachedShapes();
+    drawRulers();
+  });
+
+  // 標籤字體大小
+  document.getElementById('pp-label-size').addEventListener('input', e => {
+    if (!selectedItem) return;
+    const v = parseFloat(e.target.value);
+    if (!(v > 0)) return;
+    selectedItem.dataset.labelSize = v;
+    updateLabelFont(selectedItem);
+    document.getElementById('pp-label-auto').style.display = '';
+  });
+  document.getElementById('pp-label-auto').addEventListener('click', () => {
+    if (!selectedItem) return;
+    delete selectedItem.dataset.labelSize;
+    updateLabelFont(selectedItem);
+    document.getElementById('pp-label-size').value = Math.round(autoLabelFont(selectedItem));
+    document.getElementById('pp-label-auto').style.display = 'none';
+  });
+
   // Camera FOV
   document.getElementById('pp-fov-angle').addEventListener('input', e => {
     if (!selectedItem) return;
@@ -4972,6 +5228,7 @@ function serializeItem(el) {
     const item = { type: el.dataset.type, uid: el.dataset.uid,
                    x: parseFloat(el.style.left), y: parseFloat(el.style.top),
                    rotation: parseFloat(el.dataset.rotation) || 0, w, h, label, labelHidden };
+    if (el.dataset.labelSize) item.labelSize = parseFloat(el.dataset.labelSize);
     if (el.dataset.type === 'wall') item.wallColor = el.dataset.wallColor || '#7f8c8d';
     if (el.dataset.type === 'room') {
       item.wallThickness = parseInt(el.dataset.wallThickness) || 15;
@@ -5154,6 +5411,7 @@ function materializeItem(item) {
       const lblEl = el.querySelector('.item-label');
       if (lblEl) { lblEl.textContent = item.label; lblEl.style.display = item.labelHidden ? 'none' : ''; }
     }
+    if (item.labelSize) el.dataset.labelSize = item.labelSize;
     // 機型須在換色/FOV 之前套用（applyVariant 會重寫 SVG 內容）
     if (hasVariants(item.type)) {
       // item.cam 為舊版欄位名稱
@@ -5211,6 +5469,7 @@ function materializeItem(item) {
       const imgEl = el.querySelector('img.item-svg');
       if (imgEl) { imgEl.src = item.imgSrc; imgEl.style.opacity = item.imgOpacity ?? 1; }
     }
+    refreshLabel(el);
     return el;
   }
 }
@@ -5270,6 +5529,8 @@ function duplicateItem(src, noAutoSelect = false) {
     dstLbl.textContent   = srcLbl.textContent;
     dstLbl.style.display = srcLbl.style.display;
   }
+  if (src.dataset.labelSize) newEl.dataset.labelSize = src.dataset.labelSize;
+  refreshLabel(newEl);
   // 複製牆壁顏色
   if (src.dataset.type === 'wall' && src.dataset.wallColor) {
     updateWallColor(newEl, src.dataset.wallColor);
@@ -5423,7 +5684,15 @@ function buildLayoutSVG() {
     }
     out += `</g>`;
     if (el.dataset.type !== 'image') {
-      out += `<text x="${lx + w/2}" y="${ty + h + 14}" font-size="11" fill="#333" text-anchor="middle" font-family="sans-serif" font-weight="bold">${xmlEsc(label)}</text>`;
+      const lblEl = el.querySelector('.item-label');
+      const lblFs = lblEl ? (parseFloat(lblEl.style.fontSize) || 11) : 11;
+      if (label && (!lblEl || lblEl.style.display !== 'none')) {
+        // 比照畫面：標籤不隨物件旋轉，並讓開旋轉後的外框下緣
+        const rad   = rot * Math.PI / 180;
+        const bboxH = Math.abs(w * Math.sin(rad)) + Math.abs(h * Math.cos(rad));
+        const lblY  = ty + h / 2 + bboxH / 2 + 3 + lblFs;
+        out += `<text x="${lx + w/2}" y="${lblY}" font-size="${lblFs}" fill="#333" text-anchor="middle" font-family="sans-serif" font-weight="bold">${xmlEsc(label)}</text>`;
+      }
     }
   });
 
